@@ -1,5 +1,8 @@
+import com.Msa.casinofx.Deck;
+import com.Msa.casinofx.Hand;
 import javafx.application.Application;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
@@ -14,7 +17,7 @@ import javafx.stage.Stage;
 
 public class CasinoApplication extends Application {
 
-    private CardDeck cardDeck = new CardDeck();
+    private Deck deck = new Deck();
     private Hand dealer, player;
     private Text message = new Text();
 
@@ -36,25 +39,26 @@ public class CasinoApplication extends Application {
 
         HBox rootLayout = new HBox(5);
         rootLayout.setPadding(new Insets(5, 5, 5, 5));
-        Rectangle leftBackground = new Rectangle(550, 560);
-        leftBackground.setArcWidth(50);
-        leftBackground.setHeight(50);
-        leftBackground.setFill(Color.GREEN);
-        Rectangle rightBackground = new Rectangle(230, 560);
-        rightBackground.setArcWidth(50);
-        rightBackground.setHeight(50);
-        rightBackground.setFill(Color.ORANGE);
+        Rectangle leftBG = new Rectangle(550, 560);
+        leftBG.setArcWidth(50);
+        leftBG.setArcHeight(50);
+        leftBG.setFill(Color.GREEN);
+        Rectangle rightBG = new Rectangle(230, 560);
+        rightBG.setArcWidth(50);
+        rightBG.setArcHeight(50);
+        rightBG.setFill(Color.ORANGE);
 
-        // Left
+        // LEFT
         VBox leftVBox = new VBox(50);
         leftVBox.setAlignment(Pos.TOP_CENTER);
 
         Text dealerScore = new Text("Dealer: ");
         Text playerScore = new Text("Player: ");
 
-        leftVBox.getChildren().addAll(dealerScore, dealerCards, message, playerScore, playerCards);
+        leftVBox.getChildren().addAll(dealerScore, dealerCards, message, playerCards, playerScore);
 
-        //Right
+        // RIGHT
+
         VBox rightVBox = new VBox(20);
         rightVBox.setAlignment(Pos.CENTER);
 
@@ -69,19 +73,90 @@ public class CasinoApplication extends Application {
 
         HBox buttonsHBox = new HBox(15, btnHit, btnStand);
         buttonsHBox.setAlignment(Pos.CENTER);
+
         rightVBox.getChildren().addAll(bet, btnPlay, money, buttonsHBox);
 
-        //ADD BOTH STACKS TO ROOT LAYOUT
-        rootLayout.getChildren().addAll(new StackPane(leftBackground, leftVBox),
-                new StackPane(rightBackground, rightVBox));
+        // ADD BOTH STACKS TO ROOT LAYOUT
 
-        //BIND PROPERTES
+        rootLayout.getChildren().addAll(new StackPane(leftBG, leftVBox), new StackPane(rightBG, rightVBox));
+        root.getChildren().addAll(background, rootLayout);
+
+        // BIND PROPERTIES
+
         btnPlay.disableProperty().bind(playable);
         btnHit.disableProperty().bind(playable.not());
+        btnStand.disableProperty().bind(playable.not());
+
+        playerScore.textProperty().bind(new SimpleStringProperty("Player: ").concat(player.valueProperty().asString()));
+        dealerScore.textProperty().bind(new SimpleStringProperty("Dealer: ").concat(dealer.valueProperty().asString()));
+
+        player.valueProperty().addListener((obs, old, newValue) -> {
+            if (newValue.intValue() >= 21) {
+                endGame();
+            }
+        });
+
+        dealer.valueProperty().addListener((obs, old, newValue) -> {
+            if (newValue.intValue() >= 21) {
+                endGame();
+            }
+        });
+
+        // INIT BUTTONS
+
+        btnPlay.setOnAction(event -> {
+            startNewGame();
+        });
+
+        btnHit.setOnAction(event -> {
+            player.takeCard(deck.drawCard());
+        });
+
+        btnStand.setOnAction(event -> {
+            while (dealer.valueProperty().get() < 17) {
+                dealer.takeCard(deck.drawCard());
+            }
+
+            endGame();
+        });
 
         return root;
     }
 
+    private void startNewGame() {
+        playable.set(true);
+        message.setText("");
+
+        deck.refill();
+
+        dealer.reset();
+        player.reset();
+
+        dealer.takeCard(deck.drawCard());
+        dealer.takeCard(deck.drawCard());
+        player.takeCard(deck.drawCard());
+        player.takeCard(deck.drawCard());
+    }
+
+    private void endGame() {
+        playable.set(false);
+
+        int dealerValue = dealer.valueProperty().get();
+        int playerValue = player.valueProperty().get();
+        String winner = "Exceptional case: d: " + dealerValue + " p: " + playerValue;
+
+        // the order of checking is important
+        if (dealerValue == 21 || playerValue > 21 || dealerValue == playerValue
+                || (dealerValue < 21 && dealerValue > playerValue)) {
+            winner = "DEALER";
+        } else if (playerValue == 21 || dealerValue > 21 || playerValue > dealerValue) {
+            winner = "PLAYER";
+        }
+
+        message.setText(winner + " WON");
+    }
+
+    @Override
     public void start(Stage primaryStage) throws Exception {
         primaryStage.setScene(new Scene(createContent()));
         primaryStage.setWidth(800);

@@ -1,3 +1,6 @@
+package com.Msa.casinofx;
+
+import com.Msa.casinofx.Card.Rank;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
